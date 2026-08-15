@@ -1,111 +1,94 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+/* ====================================================
+   MODO OSCURO PREMIUM CORREGIDO (Finanzas AVV)
+==================================================== */
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+body.dark-theme {
+  background-color: #0d0914 !important;
+  color: #f3f4f6 !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+/* 1. Fondo principal de la app */
+body.dark-theme #root > div,
+body.dark-theme div[style*="background-color: rgb(249, 250, 251)"] {
+  background-color: #0d0914 !important;
 }
 
-body {
-  margin: 0;
+/* Fix para bordes globales */
+body.dark-theme * {
+  border-color: #2d243e !important;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+/* 2. Tarjetas, Modales y Sidebar (Cajas blancas a morado oscuro) */
+body.dark-theme aside,
+body.dark-theme div[style*="background-color: rgb(255, 255, 255)"],
+body.dark-theme div[style*="background-color: white"] {
+  background-color: #171123 !important;
+  border-color: #2d243e !important;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+/* 3. Títulos y Textos principales */
+body.dark-theme h1, body.dark-theme h2, body.dark-theme h3, 
+body.dark-theme h4, body.dark-theme h5 {
+  color: #ffffff !important;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
+/* Textos secundarios (de gris oscuro a gris claro) */
+body.dark-theme p, 
+body.dark-theme label,
+body.dark-theme span[style*="color: rgb(107, 114, 128)"],
+body.dark-theme div[style*="color: rgb(107, 114, 128)"],
+body.dark-theme span[style*="color: rgb(55, 65, 81)"] {
+  color: #9ca3af !important;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+/* 4. Formularios */
+body.dark-theme input,
+body.dark-theme select {
+  background-color: #0d0914 !important;
+  color: #ffffff !important;
+  border: 1px solid #2d243e !important;
+  color-scheme: dark;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* 5. Botones secundarios grises */
+body.dark-theme button[style*="background-color: rgb(243, 244, 246)"] {
+  background-color: #2d243e !important;
+  color: #e5e7eb !important;
+  border-color: #4c3a6b !important;
 }
+
+/* 6. Cajas de Alertas y Resumen (Colores Pastel a Translúcidos) */
+/* Verde agua (Ingresos/Ahorros) */
+body.dark-theme div[style*="background-color: rgb(236, 253, 245)"] { 
+  background-color: rgba(16, 185, 129, 0.1) !important; 
+}
+/* Rojo claro (Gastos) */
+body.dark-theme div[style*="background-color: rgb(254, 242, 242)"] { 
+  background-color: rgba(239, 68, 68, 0.1) !important; 
+}
+/* Morado claro (Íconos) */
+body.dark-theme div[style*="background-color: rgb(243, 232, 255)"],
+body.dark-theme button[style*="background-color: rgb(243, 232, 255)"] { 
+  background-color: rgba(109, 40, 217, 0.15) !important; 
+}
+/* Amarillo claro (Próximos pagos) */
+body.dark-theme div[style*="background-color: rgb(255, 251, 235)"] { 
+  background-color: rgba(202, 138, 4, 0.1) !important; 
+}
+
+/* 7. Navegación activa */
+body.dark-theme a.active {
+  background-color: #2d243e !important;
+  color: #c084fc !important;
+}
+
+/* 8. Recharts (Gráficos) */
+body.dark-theme .recharts-text { fill: #9ca3af !important; }
+body.dark-theme .recharts-cartesian-grid-horizontal line, 
+body.dark-theme .recharts-cartesian-grid-vertical line { stroke: #2d243e !important; }
+body.dark-theme .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: #171123 !important;
+  border-color: #2d243e !important;
+  color: #ffffff !important;
+}
+body.dark-theme .recharts-tooltip-item { color: #ffffff !important; }
