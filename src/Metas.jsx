@@ -3,8 +3,10 @@ import { Plus, Edit2, Trash2, X, Check, Trophy } from 'lucide-react'
 import { supabase } from './supabase'
 
 // Paletas expandidas según tu diseño
-const EMOJIS = ['🎯', '🏠', '✈️', '🚗', '💻', '📚', '💍', '🏋️', '🎓', '💰', '🎮', '📱', '🏥', '🍼', '🎸', '🐶', '🌍', '🚀']
-const COLORES = ['#8b5cf6', '#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#ec4899', '#14b8a6', '#f97316']
+const EMOJIS = ['🎯', '🏠', '✈️', '🚗', '💻', '📚', '💍', '🏋️', '🎓', '💰', '🎮', '📱', '🏥', '🍼', '🎸', '🐶', '🌍', '🚀','🏍️','🚨','🖥️']
+const COLORES = ['#8b5cf6', '#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#ec4899', '#14b8a6', '#f97316',
+  '#64748b', '#0ea5e9', '#84cc16', '#f43f5e', '#d946ef', '#6366f1'
+]
 
 export default function Metas() {
   const [metas, setMetas] = useState([])
@@ -264,7 +266,7 @@ export default function Metas() {
               {/* Selector de Color */}
               <div style={{ marginBottom: '30px' }}>
                 <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '8px' }}>Color</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   {COLORES.map(color => (
                     <button
                       key={color}

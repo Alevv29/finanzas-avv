@@ -124,3 +124,36 @@ body.dark-theme .recharts-tooltip-item { color: #ffffff !important; }
     padding-top: 60px !important; 
   }
 }
+/* ====================================================
+   DISEÑO RESPONSIVO MÓVIL (Para APK y Vercel)
+==================================================== */
+@media (max-width: 768px) {
+  /* 1. Aprovechar más el espacio lateral */
+  main > div {
+    padding: 15px !important;
+  }
+
+  /* 2. Forzar que los grids (formularios y tarjetas anchas) pasen a 1 sola columna */
+  div[style*="grid-template-columns: 1fr 1fr"],
+  div[style*="grid-template-columns: 2fr 1fr"],
+  div[style*="grid-template-columns: repeat(auto-fill, minmax(450px"],
+  div[style*="grid-template-columns: repeat(auto-fill, minmax(320px"] {
+    grid-template-columns: 1fr !important;
+    gap: 15px !important;
+  }
+
+  /* 3. Arreglar modales cortados (Activar scroll interno) */
+  div[style*="max-width: 500px"],
+  div[style*="max-width: 400px"] {
+    max-height: 90vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  
+  /* El formulario dentro del modal ahora tendrá scroll si es muy largo */
+  form {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 20px !important;
+  }
+}
