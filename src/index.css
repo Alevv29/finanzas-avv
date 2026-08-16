@@ -92,3 +92,35 @@ body.dark-theme .recharts-tooltip-wrapper .recharts-default-tooltip {
   color: #ffffff !important;
 }
 body.dark-theme .recharts-tooltip-item { color: #ffffff !important; }
+/* ====================================================
+   RESPONSIVE SIDEBAR (Móviles)
+==================================================== */
+.btn-hamburguesa {
+  display: none !important; /* Oculto en PC por defecto */
+}
+
+@media (max-width: 768px) {
+  .btn-hamburguesa {
+    display: flex !important; /* Visible en celulares */
+  }
+  
+  .sidebar-responsive {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .sidebar-responsive.cerrado {
+    transform: translateX(-100%);
+  }
+  
+  .sidebar-responsive.abierto {
+    transform: translateX(0);
+  }
+
+  /* Ajuste para que el botón no tape tu contenido superior del Dashboard */
+  main {
+    padding-top: 60px !important; 
+  }
+}
