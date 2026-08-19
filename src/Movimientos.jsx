@@ -15,7 +15,7 @@ export default function Movimientos() {
   const [guardando, setGuardando] = useState(false)
   
   const fechaHoy = new Date().toISOString().split('T')[0]
-  // Agregamos 'id: null' al estado inicial para saber si estamos editando
+  // Aseguramos que el estado inicial tenga el id en null para saber cuándo es nuevo
   const estadoInicial = { id: null, tipo: 'gasto', monto: '', descripcion: '', categoria: 'Otros', fecha: fechaHoy, cuenta_id: '', notas: '' }
   const [formData, setFormData] = useState(estadoInicial)
 
@@ -37,12 +37,17 @@ export default function Movimientos() {
           .order('id', { ascending: false }),
         supabase
           .from('cuentas')
-          // AQUÍ AGREGAMOS 'saldo' A LA CONSULTA:
           .select('id, nombre, tipo, entidad, saldo') 
           .eq('usuario_id', user.id)
       ])
       
-      if (!resMovs.error) setMovimientos(resMovs.data || [])
+      // Agregamos manejo de errores en la consulta por si Supabase falla
+      if (resMovs.error) {
+        console.error("Error al cargar movimientos:", resMovs.error)
+      } else {
+        setMovimientos(resMovs.data || [])
+      }
+
       if (!resCuentas.error) setCuentas(resCuentas.data || [])
     }
     setLoading(false)
@@ -61,14 +66,14 @@ export default function Movimientos() {
   // --- LÓGICA DE ABRIR MODAL (NUEVO O EDITAR) ---
   const handleAbrirModal = (mov = null) => {
     if (mov) {
-      setFormData(mov) // Si pasamos un movimiento, llenamos el formulario para editar
+      setFormData(mov)
     } else {
-      setFormData(estadoInicial) // Si no, formulario en blanco
+      setFormData(estadoInicial)
     }
     setModalAbierto(true)
   }
 
-  // --- LÓGICA DE GUARDAR / EDITAR ---
+  // --- LÓGICA DE GUARDAR / EDITAR (CON SEGURO CONTRA ERRORES) ---
   const handleGuardar = async (e) => {
     e.preventDefault()
     setGuardando(true)
@@ -76,7 +81,7 @@ export default function Movimientos() {
     const { data: { user } } = await supabase.auth.getUser()
     const montoNumerico = parseFloat(formData.monto)
     
-    // 1. Preparamos y guardamos el movimiento
+    // 1. Preparamos el movimiento (Evitamos mandar 'notas' si no existe en la base de datos)
     const payload = {
       usuario_id: user.id,
       tipo: formData.tipo,
@@ -87,40 +92,46 @@ export default function Movimientos() {
       cuenta_id: formData.cuenta_id || null
     }
 
-    await supabase.from('movimientos').insert([payload])
-
-    // 2. LÓGICA NUEVA: Actualizar el saldo de la tarjeta
-    if (formData.cuenta_id) {
-      const cuentaSeleccionada = cuentas.find(c => c.id === formData.cuenta_id)
+    if (formData.id) {
+      // SI ESTAMOS EDITANDO
+      const { error: errorUpdate } = await supabase.from('movimientos').update(payload).eq('id', formData.id)
       
-      if (cuentaSeleccionada) {
-        let nuevoSaldo = Number(cuentaSeleccionada.saldo || 0)
+      if (errorUpdate) {
+        alert("Error al editar el movimiento: " + errorUpdate.message)
+        setGuardando(false)
+        return
+      }
+    } else {
+      // SI ES UN MOVIMIENTO NUEVO
+      const { error: errorInsert } = await supabase.from('movimientos').insert([payload])
+      
+      // ¡EL SEGURO!: Si falla el registro, lanzamos alerta y DETENEMOS el proceso
+      if (errorInsert) {
+        console.error("Detalle del error:", errorInsert)
+        alert("Error al guardar en Supabase: " + errorInsert.message)
+        setGuardando(false)
+        return
+      }
 
-        if (formData.tipo === 'gasto') {
-          // En crédito el gasto aumenta la deuda, en débito/ahorro resta el dinero
-          if (cuentaSeleccionada.tipo === 'credito') {
-            nuevoSaldo += montoNumerico
-          } else {
-            nuevoSaldo -= montoNumerico
+      // 2. SOLO si se guardó exitosamente el movimiento, actualizamos el saldo de la tarjeta
+      if (formData.cuenta_id) {
+        const cuentaSeleccionada = cuentas.find(c => c.id === formData.cuenta_id)
+        
+        if (cuentaSeleccionada) {
+          let nuevoSaldo = Number(cuentaSeleccionada.saldo || 0)
+
+          if (formData.tipo === 'gasto') {
+            nuevoSaldo = cuentaSeleccionada.tipo === 'credito' ? nuevoSaldo + montoNumerico : nuevoSaldo - montoNumerico
+          } else if (formData.tipo === 'ingreso') {
+            nuevoSaldo = cuentaSeleccionada.tipo === 'credito' ? nuevoSaldo - montoNumerico : nuevoSaldo + montoNumerico
           }
-        } else if (formData.tipo === 'ingreso') {
-          // En crédito el ingreso baja la deuda, en débito/ahorro suma dinero
-          if (cuentaSeleccionada.tipo === 'credito') {
-            nuevoSaldo -= montoNumerico
-          } else {
-            nuevoSaldo += montoNumerico
-          }
+
+          await supabase.from('cuentas').update({ saldo: nuevoSaldo }).eq('id', formData.cuenta_id)
         }
-
-        // Enviamos el nuevo saldo a Supabase
-        await supabase
-          .from('cuentas')
-          .update({ saldo: nuevoSaldo })
-          .eq('id', formData.cuenta_id)
       }
     }
 
-    await fetchDatos() // Recargamos para ver los cambios
+    await fetchDatos() // Recargamos la tabla
     setModalAbierto(false)
     setGuardando(false)
     setFormData(estadoInicial)
@@ -129,7 +140,6 @@ export default function Movimientos() {
   // --- LÓGICA DE ELIMINAR (Devuelve el saldo a la tarjeta) ---
   const handleEliminar = async (mov) => {
     if (window.confirm('¿Estás seguro de eliminar este movimiento?')) {
-      // 1. Devolver el dinero al saldo de la cuenta original
       if (mov.cuenta_id) {
         const cuentaSeleccionada = cuentas.find(c => c.id === mov.cuenta_id)
         if (cuentaSeleccionada) {
@@ -137,17 +147,14 @@ export default function Movimientos() {
           const montoNum = Number(mov.monto)
           
           if (mov.tipo === 'gasto') {
-            // Si eliminamos un gasto, devolvemos el dinero (o restamos deuda)
             saldoRestaurado = cuentaSeleccionada.tipo === 'credito' ? saldoRestaurado - montoNum : saldoRestaurado + montoNum
           } else {
-            // Si eliminamos un ingreso, quitamos el dinero (o sumamos deuda)
             saldoRestaurado = cuentaSeleccionada.tipo === 'credito' ? saldoRestaurado + montoNum : saldoRestaurado - montoNum
           }
           await supabase.from('cuentas').update({ saldo: saldoRestaurado }).eq('id', mov.cuenta_id)
         }
       }
       
-      // 2. Eliminar el registro
       await supabase.from('movimientos').delete().eq('id', mov.id)
       fetchDatos()
     }
@@ -248,7 +255,6 @@ export default function Movimientos() {
                   {mov.tipo === 'gasto' ? '-' : ''}{formatearSoles(mov.monto)}
                 </div>
 
-                {/* --- NUEVOS BOTONES DE EDITAR Y ELIMINAR --- */}
                 <div style={{ display: 'flex', gap: '15px', marginLeft: '25px' }}>
                   <button onClick={() => handleAbrirModal(mov)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                     <Edit2 size={18} />
@@ -264,9 +270,7 @@ export default function Movimientos() {
         )}
       </div>
 
-      {/* =========================================================
-          MODAL "NUEVO / EDITAR MOVIMIENTO"
-      ========================================================= */}
+      {/* MODAL "NUEVO / EDITAR MOVIMIENTO" */}
       {modalAbierto && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', width: '100%', maxWidth: '400px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
@@ -282,7 +286,6 @@ export default function Movimientos() {
 
             <form onSubmit={handleGuardar} style={{ padding: '0 20px 20px 20px' }}>
               
-              {/* Botones Ingreso / Gasto */}
               <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                 <button
                   type="button"
@@ -312,13 +315,11 @@ export default function Movimientos() {
                 </button>
               </div>
 
-              {/* Descripción */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px' }}>
                 <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Descripción *</label>
                 <input required value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} placeholder="ej. Almuerzo trabajo" style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none' }} />
               </div>
 
-              {/* Monto y Fecha (Grid 2 columnas) */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Monto *</label>
@@ -326,13 +327,10 @@ export default function Movimientos() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', position: 'relative' }}>
                   <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Fecha *</label>
-                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                    <input type="date" required value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} style={{ width: '100%', padding: '10px 12px', paddingRight: '35px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
-                  </div>
+                  <input type="date" required value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
               </div>
 
-              {/* Categoría */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px' }}>
                 <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Categoría</label>
                 <select value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})} style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #a855f7', fontSize: '14px', backgroundColor: 'white', color: '#374151', outline: 'none' }}>
@@ -342,7 +340,6 @@ export default function Movimientos() {
                 </select>
               </div>
 
-              {/* Tarjeta (opcional) */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px' }}>
                 <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Tarjeta (opcional)</label>
                 <select value={formData.cuenta_id} onChange={e => setFormData({...formData, cuenta_id: e.target.value})} style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', backgroundColor: 'white', color: '#374151', outline: 'none' }}>
@@ -353,13 +350,11 @@ export default function Movimientos() {
                 </select>
               </div>
 
-              {/* Notas */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '25px' }}>
                 <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Notas</label>
                 <input value={formData.notas} onChange={e => setFormData({...formData, notas: e.target.value})} placeholder="Opcional" style={{ padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none' }} />
               </div>
 
-              {/* Botones de acción Footer */}
               <div style={{ display: 'flex', gap: '15px' }}>
                 <button type="button" onClick={() => setModalAbierto(false)} style={{ flex: 1, padding: '10px', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', color: '#374151', fontWeight: '500', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
                   <X size={16} /> Cancelar
