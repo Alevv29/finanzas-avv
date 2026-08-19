@@ -31,13 +31,14 @@ export default function Movimientos() {
       const [resMovs, resCuentas] = await Promise.all([
         supabase
           .from('movimientos')
-          .select('*, cuentas(nombre)') 
+          .select('*, cuentas(nombre)')
           .eq('usuario_id', user.id)
           .order('fecha', { ascending: false })
           .order('id', { ascending: false }),
         supabase
           .from('cuentas')
-          .select('id, nombre, tipo, entidad, saldo')
+          // AQUÍ AGREGAMOS 'saldo' A LA CONSULTA:
+          .select('id, nombre, tipo, entidad, saldo') 
           .eq('usuario_id', user.id)
       ])
       
@@ -46,7 +47,7 @@ export default function Movimientos() {
     }
     setLoading(false)
   }
-
+  
   const formatearSoles = (monto) => {
     return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(monto || 0)
   }
@@ -75,6 +76,7 @@ export default function Movimientos() {
     const { data: { user } } = await supabase.auth.getUser()
     const montoNumerico = parseFloat(formData.monto)
     
+    // 1. Preparamos y guardamos el movimiento
     const payload = {
       usuario_id: user.id,
       tipo: formData.tipo,
@@ -82,34 +84,46 @@ export default function Movimientos() {
       descripcion: formData.descripcion,
       categoria: formData.categoria,
       fecha: formData.fecha,
-      cuenta_id: formData.cuenta_id || null,
-      notas: formData.notas || ''
+      cuenta_id: formData.cuenta_id || null
     }
 
-    if (formData.id) {
-      // SI TIENE ID, ESTAMOS EDITANDO
-      await supabase.from('movimientos').update(payload).eq('id', formData.id)
-    } else {
-      // SI NO TIENE ID, ES NUEVO (Insertamos y actualizamos saldo de cuenta)
-      await supabase.from('movimientos').insert([payload])
+    await supabase.from('movimientos').insert([payload])
 
-      if (formData.cuenta_id) {
-        const cuentaSeleccionada = cuentas.find(c => c.id === formData.cuenta_id)
-        if (cuentaSeleccionada) {
-          let nuevoSaldo = Number(cuentaSeleccionada.saldo || 0)
-          if (formData.tipo === 'gasto') {
-            nuevoSaldo = cuentaSeleccionada.tipo === 'credito' ? nuevoSaldo + montoNumerico : nuevoSaldo - montoNumerico
+    // 2. LÓGICA NUEVA: Actualizar el saldo de la tarjeta
+    if (formData.cuenta_id) {
+      const cuentaSeleccionada = cuentas.find(c => c.id === formData.cuenta_id)
+      
+      if (cuentaSeleccionada) {
+        let nuevoSaldo = Number(cuentaSeleccionada.saldo || 0)
+
+        if (formData.tipo === 'gasto') {
+          // En crédito el gasto aumenta la deuda, en débito/ahorro resta el dinero
+          if (cuentaSeleccionada.tipo === 'credito') {
+            nuevoSaldo += montoNumerico
           } else {
-            nuevoSaldo = cuentaSeleccionada.tipo === 'credito' ? nuevoSaldo - montoNumerico : nuevoSaldo + montoNumerico
+            nuevoSaldo -= montoNumerico
           }
-          await supabase.from('cuentas').update({ saldo: nuevoSaldo }).eq('id', formData.cuenta_id)
+        } else if (formData.tipo === 'ingreso') {
+          // En crédito el ingreso baja la deuda, en débito/ahorro suma dinero
+          if (cuentaSeleccionada.tipo === 'credito') {
+            nuevoSaldo -= montoNumerico
+          } else {
+            nuevoSaldo += montoNumerico
+          }
         }
+
+        // Enviamos el nuevo saldo a Supabase
+        await supabase
+          .from('cuentas')
+          .update({ saldo: nuevoSaldo })
+          .eq('id', formData.cuenta_id)
       }
     }
 
-    await fetchDatos()
+    await fetchDatos() // Recargamos para ver los cambios
     setModalAbierto(false)
     setGuardando(false)
+    setFormData(estadoInicial)
   }
 
   // --- LÓGICA DE ELIMINAR (Devuelve el saldo a la tarjeta) ---
