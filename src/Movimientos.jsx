@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Download, ArrowDownCircle, ArrowUpCircle, X, Check, Calendar as CalendarIcon } from 'lucide-react'
+import { Plus, Download, ArrowDownCircle, ArrowUpCircle, X, Check, Edit2, Trash2 } from 'lucide-react'
 import { supabase } from './supabase'
 
 const CATEGORIAS_GASTO = ['Alimentación', 'Transporte', 'Educación', 'Pago de tarjeta', 'Pago deuda', 'Entretenimiento', 'Salud', 'Otros']
@@ -7,7 +7,7 @@ const CATEGORIAS_INGRESO = ['Sueldo', 'Negocio', 'Inversiones', 'Préstamo', 'Ot
 
 export default function Movimientos() {
   const [movimientos, setMovimientos] = useState([])
-  const [cuentas, setCuentas] = useState([]) // <-- Nuevo estado para guardar las tarjetas
+  const [cuentas, setCuentas] = useState([])
   const [loading, setLoading] = useState(true)
   const [filtroActivo, setFiltroActivo] = useState('Todos')
   
@@ -15,8 +15,8 @@ export default function Movimientos() {
   const [guardando, setGuardando] = useState(false)
   
   const fechaHoy = new Date().toISOString().split('T')[0]
-  // Añadimos cuenta_id y notas al estado inicial
-  const estadoInicial = { tipo: 'gasto', monto: '', descripcion: '', categoria: 'Otros', fecha: fechaHoy, cuenta_id: '', notas: '' }
+  // Agregamos 'id: null' al estado inicial para saber si estamos editando
+  const estadoInicial = { id: null, tipo: 'gasto', monto: '', descripcion: '', categoria: 'Otros', fecha: fechaHoy, cuenta_id: '', notas: '' }
   const [formData, setFormData] = useState(estadoInicial)
 
   useEffect(() => {
@@ -31,14 +31,13 @@ export default function Movimientos() {
       const [resMovs, resCuentas] = await Promise.all([
         supabase
           .from('movimientos')
-          .select('*, cuentas(nombre)')
+          .select('*, cuentas(nombre)') 
           .eq('usuario_id', user.id)
           .order('fecha', { ascending: false })
           .order('id', { ascending: false }),
         supabase
           .from('cuentas')
-          // AQUÍ AGREGAMOS 'saldo' A LA CONSULTA:
-          .select('id, nombre, tipo, entidad, saldo') 
+          .select('id, nombre, tipo, entidad, saldo')
           .eq('usuario_id', user.id)
       ])
       
@@ -58,6 +57,17 @@ export default function Movimientos() {
     return fecha.toLocaleDateString('es-PE', opciones).replace('.', '')
   }
 
+  // --- LÓGICA DE ABRIR MODAL (NUEVO O EDITAR) ---
+  const handleAbrirModal = (mov = null) => {
+    if (mov) {
+      setFormData(mov) // Si pasamos un movimiento, llenamos el formulario para editar
+    } else {
+      setFormData(estadoInicial) // Si no, formulario en blanco
+    }
+    setModalAbierto(true)
+  }
+
+  // --- LÓGICA DE GUARDAR / EDITAR ---
   const handleGuardar = async (e) => {
     e.preventDefault()
     setGuardando(true)
@@ -65,7 +75,6 @@ export default function Movimientos() {
     const { data: { user } } = await supabase.auth.getUser()
     const montoNumerico = parseFloat(formData.monto)
     
-    // 1. Preparamos y guardamos el movimiento
     const payload = {
       usuario_id: user.id,
       tipo: formData.tipo,
@@ -73,46 +82,61 @@ export default function Movimientos() {
       descripcion: formData.descripcion,
       categoria: formData.categoria,
       fecha: formData.fecha,
-      cuenta_id: formData.cuenta_id || null
+      cuenta_id: formData.cuenta_id || null,
+      notas: formData.notas || ''
     }
 
-    await supabase.from('movimientos').insert([payload])
+    if (formData.id) {
+      // SI TIENE ID, ESTAMOS EDITANDO
+      await supabase.from('movimientos').update(payload).eq('id', formData.id)
+    } else {
+      // SI NO TIENE ID, ES NUEVO (Insertamos y actualizamos saldo de cuenta)
+      await supabase.from('movimientos').insert([payload])
 
-    // 2. LÓGICA NUEVA: Actualizar el saldo de la tarjeta
-    if (formData.cuenta_id) {
-      const cuentaSeleccionada = cuentas.find(c => c.id === formData.cuenta_id)
-      
-      if (cuentaSeleccionada) {
-        let nuevoSaldo = Number(cuentaSeleccionada.saldo || 0)
-
-        if (formData.tipo === 'gasto') {
-          // En crédito el gasto aumenta la deuda, en débito/ahorro resta el dinero
-          if (cuentaSeleccionada.tipo === 'credito') {
-            nuevoSaldo += montoNumerico
+      if (formData.cuenta_id) {
+        const cuentaSeleccionada = cuentas.find(c => c.id === formData.cuenta_id)
+        if (cuentaSeleccionada) {
+          let nuevoSaldo = Number(cuentaSeleccionada.saldo || 0)
+          if (formData.tipo === 'gasto') {
+            nuevoSaldo = cuentaSeleccionada.tipo === 'credito' ? nuevoSaldo + montoNumerico : nuevoSaldo - montoNumerico
           } else {
-            nuevoSaldo -= montoNumerico
+            nuevoSaldo = cuentaSeleccionada.tipo === 'credito' ? nuevoSaldo - montoNumerico : nuevoSaldo + montoNumerico
           }
-        } else if (formData.tipo === 'ingreso') {
-          // En crédito el ingreso baja la deuda, en débito/ahorro suma dinero
-          if (cuentaSeleccionada.tipo === 'credito') {
-            nuevoSaldo -= montoNumerico
-          } else {
-            nuevoSaldo += montoNumerico
-          }
+          await supabase.from('cuentas').update({ saldo: nuevoSaldo }).eq('id', formData.cuenta_id)
         }
-
-        // Enviamos el nuevo saldo a Supabase
-        await supabase
-          .from('cuentas')
-          .update({ saldo: nuevoSaldo })
-          .eq('id', formData.cuenta_id)
       }
     }
 
-    await fetchDatos() // Recargamos para ver los cambios
+    await fetchDatos()
     setModalAbierto(false)
     setGuardando(false)
-    setFormData(estadoInicial)
+  }
+
+  // --- LÓGICA DE ELIMINAR (Devuelve el saldo a la tarjeta) ---
+  const handleEliminar = async (mov) => {
+    if (window.confirm('¿Estás seguro de eliminar este movimiento?')) {
+      // 1. Devolver el dinero al saldo de la cuenta original
+      if (mov.cuenta_id) {
+        const cuentaSeleccionada = cuentas.find(c => c.id === mov.cuenta_id)
+        if (cuentaSeleccionada) {
+          let saldoRestaurado = Number(cuentaSeleccionada.saldo || 0)
+          const montoNum = Number(mov.monto)
+          
+          if (mov.tipo === 'gasto') {
+            // Si eliminamos un gasto, devolvemos el dinero (o restamos deuda)
+            saldoRestaurado = cuentaSeleccionada.tipo === 'credito' ? saldoRestaurado - montoNum : saldoRestaurado + montoNum
+          } else {
+            // Si eliminamos un ingreso, quitamos el dinero (o sumamos deuda)
+            saldoRestaurado = cuentaSeleccionada.tipo === 'credito' ? saldoRestaurado + montoNum : saldoRestaurado - montoNum
+          }
+          await supabase.from('cuentas').update({ saldo: saldoRestaurado }).eq('id', mov.cuenta_id)
+        }
+      }
+      
+      // 2. Eliminar el registro
+      await supabase.from('movimientos').delete().eq('id', mov.id)
+      fetchDatos()
+    }
   }
 
   const movimientosFiltrados = movimientos.filter(m => {
@@ -142,7 +166,7 @@ export default function Movimientos() {
           <button style={{ backgroundColor: 'white', color: '#374151', border: '1px solid #d1d5db', padding: '10px 15px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '500' }}>
             <Download size={18} /> Exportar
           </button>
-          <button onClick={() => setModalAbierto(true)} style={{ backgroundColor: '#6d28d9', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+          <button onClick={() => handleAbrirModal()} style={{ backgroundColor: '#6d28d9', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
             <Plus size={18} /> Nuevo
           </button>
         </div>
@@ -198,7 +222,6 @@ export default function Movimientos() {
                   <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '600', color: '#1f2937' }}>{mov.descripcion}</h4>
                   <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', gap: '5px', alignItems: 'center' }}>
                     {mov.categoria} • {formatearFecha(mov.fecha)} 
-                    {/* Aquí mostramos la tarjeta si fue seleccionada */}
                     {mov.cuentas?.nombre && (
                       <span style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', marginLeft: '5px' }}>
                         💳 {mov.cuentas.nombre}
@@ -210,6 +233,17 @@ export default function Movimientos() {
                 <div style={{ fontSize: '16px', fontWeight: 'bold', color: mov.tipo === 'gasto' ? '#ef4444' : '#10b981' }}>
                   {mov.tipo === 'gasto' ? '-' : ''}{formatearSoles(mov.monto)}
                 </div>
+
+                {/* --- NUEVOS BOTONES DE EDITAR Y ELIMINAR --- */}
+                <div style={{ display: 'flex', gap: '15px', marginLeft: '25px' }}>
+                  <button onClick={() => handleAbrirModal(mov)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                    <Edit2 size={18} />
+                  </button>
+                  <button onClick={() => handleEliminar(mov)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+
               </div>
             ))}
           </div>
@@ -217,14 +251,16 @@ export default function Movimientos() {
       </div>
 
       {/* =========================================================
-          MODAL "NUEVO MOVIMIENTO" (Idéntico a tu captura)
+          MODAL "NUEVO / EDITAR MOVIMIENTO"
       ========================================================= */}
       {modalAbierto && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', width: '100%', maxWidth: '400px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
             
             <div style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#111827' }}>Nuevo movimiento</h3>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#111827' }}>
+                {formData.id ? 'Editar movimiento' : 'Nuevo movimiento'}
+              </h3>
               <button onClick={() => setModalAbierto(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
