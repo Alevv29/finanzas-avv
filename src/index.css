@@ -92,65 +92,89 @@ body.dark-theme .recharts-tooltip-wrapper .recharts-default-tooltip {
   color: #ffffff !important;
 }
 body.dark-theme .recharts-tooltip-item { color: #ffffff !important; }
+
+
 /* ====================================================
-   RESPONSIVE SIDEBAR (Móviles)
+   DISEÑO RESPONSIVO MÓVIL CORREGIDO (Para APK y Vercel)
 ==================================================== */
-.btn-hamburguesa {
-  display: none !important; /* Oculto en PC por defecto */
-}
+.btn-hamburguesa { display: none !important; }
 
 @media (max-width: 768px) {
-  .btn-hamburguesa {
-    display: flex !important; /* Visible en celulares */
-  }
-  
+  /* 1. Botón de Hamburguesa y Menú */
+  .btn-hamburguesa { display: flex !important; }
   .sidebar-responsive {
     position: fixed !important;
-    top: 0;
-    left: 0;
+    top: 0; left: 0;
     transition: transform 0.3s ease-in-out;
+    z-index: 1001 !important;
   }
-  
-  .sidebar-responsive.cerrado {
-    transform: translateX(-100%);
-  }
-  
-  .sidebar-responsive.abierto {
-    transform: translateX(0);
-  }
+  .sidebar-responsive.cerrado { transform: translateX(-100%); }
+  .sidebar-responsive.abierto { transform: translateX(0); }
 
-  /* Ajuste para que el botón no tape tu contenido superior del Dashboard */
-  main {
-    padding-top: 60px !important; 
-  }
-}
-/* ====================================================
-   DISEÑO RESPONSIVO MÓVIL (Para APK y Vercel)
-==================================================== */
-@media (max-width: 768px) {
-  /* 1. Aprovechar más el espacio lateral */
+  /* 2. Empujar el contenido (Soluciona que el menú tape el Calendario) */
   main > div {
     padding: 15px !important;
+    padding-top: 65px !important; /* Espacio extra para que el botón hamburguesa no estorbe */
   }
 
-  /* 2. Forzar que los grids (formularios y tarjetas anchas) pasen a 1 sola columna */
+  /* 3. Encabezados (Que los botones de 'Nuevo' bajen si no caben) */
+  div[style*="justify-content: space-between"][style*="margin-bottom: 25px"],
+  div[style*="justify-content: space-between"][style*="margin-bottom: 35px"] {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 15px !important;
+  }
+
+  /* 4. Arreglar Movimientos (Mostrar Botones de Editar/Eliminar) */
+  div[style*="padding: 16px 20px"][style*="align-items: center"] {
+    flex-wrap: wrap !important;
+    padding: 15px !important;
+  }
+  /* Pasa los botones a su propia fila en la parte de abajo */
+  div[style*="margin-left: 25px"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+    justify-content: flex-end !important;
+    border-top: 1px dashed #e5e7eb !important;
+    padding-top: 15px !important;
+    margin-top: 10px !important;
+  }
+  /* Asegurar que la línea divisoria se vea bien en Modo Oscuro */
+  body.dark-theme div[style*="margin-left: 25px"] {
+    border-top-color: #2d243e !important;
+  }
+
+  /* 5. Arreglar el Calendario (Activar desplazamiento lateral) */
+  /* Fuerza un ancho mínimo para no aplastar los días */
+  div[style*="grid-template-columns: repeat(7"] {
+    min-width: 550px !important; 
+  }
+  /* El contenedor padre gana una barra de desplazamiento horizontal */
+  div[style*="border-radius: 12px"][style*="overflow: hidden"] {
+    overflow-x: auto !important;
+    padding-bottom: 5px !important;
+  }
+
+  /* 6. Grids Generales (Pasar a 1 columna) */
   div[style*="grid-template-columns: 1fr 1fr"],
   div[style*="grid-template-columns: 2fr 1fr"],
   div[style*="grid-template-columns: repeat(auto-fill, minmax(450px"],
-  div[style*="grid-template-columns: repeat(auto-fill, minmax(320px"] {
+  div[style*="grid-template-columns: repeat(auto-fill, minmax(320px"],
+  div[style*="grid-template-columns: repeat(auto-fill, minmax(300px"] {
     grid-template-columns: 1fr !important;
     gap: 15px !important;
   }
 
-  /* 3. Arreglar modales cortados (Activar scroll interno) */
+  /* 7. Evitar que los Modales se corten */
   div[style*="max-width: 500px"],
+  div[style*="max-width: 450px"],
   div[style*="max-width: 400px"] {
-    max-height: 90vh !important;
+    max-height: 85vh !important;
     display: flex !important;
     flex-direction: column !important;
+    margin: 15px !important;
   }
-  
-  /* El formulario dentro del modal ahora tendrá scroll si es muy largo */
+  /* Agregar scroll interno a los formularios */
   form {
     overflow-y: auto !important;
     overflow-x: hidden !important;
