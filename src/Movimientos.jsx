@@ -15,7 +15,6 @@ export default function Movimientos() {
   const [guardando, setGuardando] = useState(false)
   
   const fechaHoy = new Date().toISOString().split('T')[0]
-  // Aseguramos que el estado inicial tenga el id en null para saber cuándo es nuevo
   const estadoInicial = { id: null, tipo: 'gasto', monto: '', descripcion: '', categoria: 'Otros', fecha: fechaHoy, cuenta_id: '', notas: '' }
   const [formData, setFormData] = useState(estadoInicial)
 
@@ -41,7 +40,6 @@ export default function Movimientos() {
           .eq('usuario_id', user.id)
       ])
       
-      // Agregamos manejo de errores en la consulta por si Supabase falla
       if (resMovs.error) {
         console.error("Error al cargar movimientos:", resMovs.error)
       } else {
@@ -63,7 +61,6 @@ export default function Movimientos() {
     return fecha.toLocaleDateString('es-PE', opciones).replace('.', '')
   }
 
-  // --- LÓGICA DE ABRIR MODAL (NUEVO O EDITAR) ---
   const handleAbrirModal = (mov = null) => {
     if (mov) {
       setFormData(mov)
@@ -73,7 +70,6 @@ export default function Movimientos() {
     setModalAbierto(true)
   }
 
-  // --- LÓGICA DE GUARDAR / EDITAR (CON SEGURO CONTRA ERRORES) ---
   const handleGuardar = async (e) => {
     e.preventDefault()
     setGuardando(true)
@@ -81,7 +77,6 @@ export default function Movimientos() {
     const { data: { user } } = await supabase.auth.getUser()
     const montoNumerico = parseFloat(formData.monto)
     
-    // 1. Preparamos el movimiento (Evitamos mandar 'notas' si no existe en la base de datos)
     const payload = {
       usuario_id: user.id,
       tipo: formData.tipo,
@@ -93,19 +88,14 @@ export default function Movimientos() {
     }
 
     if (formData.id) {
-      // SI ESTAMOS EDITANDO
       const { error: errorUpdate } = await supabase.from('movimientos').update(payload).eq('id', formData.id)
-      
       if (errorUpdate) {
         alert("Error al editar el movimiento: " + errorUpdate.message)
         setGuardando(false)
         return
       }
     } else {
-      // SI ES UN MOVIMIENTO NUEVO
       const { error: errorInsert } = await supabase.from('movimientos').insert([payload])
-      
-      // ¡EL SEGURO!: Si falla el registro, lanzamos alerta y DETENEMOS el proceso
       if (errorInsert) {
         console.error("Detalle del error:", errorInsert)
         alert("Error al guardar en Supabase: " + errorInsert.message)
@@ -113,31 +103,26 @@ export default function Movimientos() {
         return
       }
 
-      // 2. SOLO si se guardó exitosamente el movimiento, actualizamos el saldo de la tarjeta
       if (formData.cuenta_id) {
         const cuentaSeleccionada = cuentas.find(c => c.id === formData.cuenta_id)
-        
         if (cuentaSeleccionada) {
           let nuevoSaldo = Number(cuentaSeleccionada.saldo || 0)
-
           if (formData.tipo === 'gasto') {
             nuevoSaldo = cuentaSeleccionada.tipo === 'credito' ? nuevoSaldo + montoNumerico : nuevoSaldo - montoNumerico
           } else if (formData.tipo === 'ingreso') {
             nuevoSaldo = cuentaSeleccionada.tipo === 'credito' ? nuevoSaldo - montoNumerico : nuevoSaldo + montoNumerico
           }
-
           await supabase.from('cuentas').update({ saldo: nuevoSaldo }).eq('id', formData.cuenta_id)
         }
       }
     }
 
-    await fetchDatos() // Recargamos la tabla
+    await fetchDatos() 
     setModalAbierto(false)
     setGuardando(false)
     setFormData(estadoInicial)
   }
 
-  // --- LÓGICA DE ELIMINAR (Devuelve el saldo a la tarjeta) ---
   const handleEliminar = async (mov) => {
     if (window.confirm('¿Estás seguro de eliminar este movimiento?')) {
       if (mov.cuenta_id) {
@@ -178,7 +163,7 @@ export default function Movimientos() {
     <div style={{ padding: '30px', maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
       
       {/* Encabezado */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+      <div className="header-movimientos" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
         <div>
           <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0 0 5px 0' }}>Movimientos</h2>
           <p style={{ color: '#6b7280', margin: 0 }}>Historial de ingresos y gastos</p>
@@ -206,7 +191,7 @@ export default function Movimientos() {
       </div>
 
       {/* Barra de Filtros */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
+      <div className="filtros-movimientos" style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
         {['Todos', 'Ingresos', 'Gastos'].map(filtro => (
           <button
             key={filtro}
@@ -233,7 +218,7 @@ export default function Movimientos() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {movimientosFiltrados.map((mov, index) => (
-              <div key={mov.id} style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', borderBottom: index === movimientosFiltrados.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
+              <div key={mov.id} className="fila-movimiento" style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', borderBottom: index === movimientosFiltrados.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
                 
                 <div style={{ marginRight: '15px', color: mov.tipo === 'gasto' ? '#f87171' : '#60a5fa' }}>
                   {mov.tipo === 'gasto' ? <ArrowDownCircle size={28} strokeWidth={1.5} /> : <ArrowUpCircle size={28} strokeWidth={1.5} />}
@@ -241,7 +226,7 @@ export default function Movimientos() {
 
                 <div style={{ flex: 1 }}>
                   <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '600', color: '#1f2937' }}>{mov.descripcion}</h4>
-                  <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', gap: '5px', alignItems: 'center' }}>
+                  <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
                     {mov.categoria} • {formatearFecha(mov.fecha)} 
                     {mov.cuentas?.nombre && (
                       <span style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', marginLeft: '5px' }}>
@@ -255,7 +240,8 @@ export default function Movimientos() {
                   {mov.tipo === 'gasto' ? '-' : ''}{formatearSoles(mov.monto)}
                 </div>
 
-                <div style={{ display: 'flex', gap: '15px', marginLeft: '25px' }}>
+                {/* Contenedor de Acciones (Botones) */}
+                <div className="acciones-movimiento" style={{ display: 'flex', gap: '15px', marginLeft: '25px' }}>
                   <button onClick={() => handleAbrirModal(mov)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                     <Edit2 size={18} />
                   </button>
@@ -327,7 +313,9 @@ export default function Movimientos() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', position: 'relative' }}>
                   <label style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>Fecha *</label>
-                  <input type="date" required value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <input type="date" required value={formData.fecha} onChange={e => setFormData({...formData, fecha: e.target.value})} style={{ width: '100%', padding: '10px 12px', paddingRight: '35px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
                 </div>
               </div>
 

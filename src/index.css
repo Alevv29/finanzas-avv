@@ -180,4 +180,36 @@ body.dark-theme .recharts-tooltip-item { color: #ffffff !important; }
     overflow-x: hidden !important;
     padding-bottom: 20px !important;
   }
+  /* ====================================================
+     ARREGLOS EXACTOS PARA MOVIMIENTOS Y CALENDARIO
+  ==================================================== */
+  .header-movimientos {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 15px !important;
+  }
+  
+  .filtros-movimientos {
+    flex-wrap: wrap !important;
+  }
+  
+  .fila-movimiento {
+    flex-wrap: wrap !important;
+    padding: 15px !important;
+  }
+  
+  /* Pasa los botones a su propia fila inferior */
+  .acciones-movimiento {
+    margin-left: 0 !important;
+    width: 100% !important;
+    justify-content: flex-end !important;
+    border-top: 1px dashed #e5e7eb !important;
+    padding-top: 15px !important;
+    margin-top: 15px !important;
+  }
+
+  /* El color de la línea se adapta en Modo Oscuro */
+  body.dark-theme .acciones-movimiento {
+    border-top-color: #2d243e !important;
+  }
 }
