@@ -107,8 +107,17 @@ export default function Calendario() {
   if (loading) return <div style={{ padding: '40px' }}>Cargando calendario...</div>
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="container-calendario" style={{ padding: '30px', maxWidth: '1200px', margin: '0 auto' }}>
       
+      {/* BLOQUE DE ESTILOS INFALIBLE */}
+      <style>{`
+        @media (max-width: 768px) {
+          .container-calendario { padding: 15px !important; padding-top: 70px !important; }
+          .scroll-calendario { overflow-x: auto !important; padding-bottom: 10px; }
+          .grid-calendario { min-width: 650px !important; } /* Evita que los días se aplasten */
+        }
+      `}</style>
+
       {/* Encabezado y Leyenda */}
       <div style={{ marginBottom: '25px' }}>
         <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0 0 5px 0' }}>Calendario de Pagos</h2>
@@ -165,66 +174,68 @@ export default function Calendario() {
         )}
       </div>
 
-      {/* Calendario */}
-      <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', marginBottom: '40px', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+      {/* Calendario con scroll lateral */}
+      <div className="scroll-calendario" style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', marginBottom: '40px', overflowX: 'auto', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
         
-        {/* Controles del mes */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
-          <button onClick={() => cambiarMes(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}><ChevronLeft size={20}/></button>
-          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#111827', textTransform: 'capitalize' }}>{nombreMesVisible}</h3>
-          <button onClick={() => cambiarMes(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}><ChevronRight size={20}/></button>
-        </div>
+        <div className="grid-calendario">
+          {/* Controles del mes */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+            <button onClick={() => cambiarMes(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}><ChevronLeft size={20}/></button>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', color: '#111827', textTransform: 'capitalize' }}>{nombreMesVisible}</h3>
+            <button onClick={() => cambiarMes(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}><ChevronRight size={20}/></button>
+          </div>
 
-        {/* Cabecera días de la semana */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-          {diasSemana.map(dia => (
-            <div key={dia} style={{ padding: '12px 10px', textAlign: 'center', fontSize: '13px', fontWeight: '500', color: '#6b7280' }}>
-              {dia}
-            </div>
-          ))}
-        </div>
-
-        {/* Grilla de días */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-          {grillaDias.map((dia, idx) => {
-            const esHoy = dia === hoy.getDate() && mesVisible === hoy.getMonth() && anioVisible === hoy.getFullYear()
-            
-            // Buscar eventos para este día
-            const tarjetasCredito = cuentas.filter(c => c.tipo === 'credito')
-            const pagosHoy = tarjetasCredito.filter(c => c.dia_pago === dia)
-            const cortesHoy = tarjetasCredito.filter(c => c.dia_corte === dia)
-
-            return (
-              <div key={idx} style={{ minHeight: '100px', padding: '10px', borderRight: (idx + 1) % 7 === 0 ? 'none' : '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6', backgroundColor: dia ? 'white' : '#f9fafb' }}>
-                {dia && (
-                  <>
-                    <div style={{ marginBottom: '8px' }}>
-                      <span style={{ 
-                        display: 'inline-flex', justifyContent: 'center', alignItems: 'center', width: '28px', height: '28px', borderRadius: '50%', fontSize: '13px', fontWeight: esHoy ? 'bold' : '500', 
-                        backgroundColor: esHoy ? '#6d28d9' : 'transparent', color: esHoy ? 'white' : '#111827' 
-                      }}>
-                        {dia}
-                      </span>
-                    </div>
-                    
-                    {/* Eventos del día */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {pagosHoy.map(c => (
-                        <div key={`p-${c.id}`} style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '4px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {c.nombre}
-                        </div>
-                      ))}
-                      {cortesHoy.map(c => (
-                        <div key={`c-${c.id}`} style={{ backgroundColor: '#fee2e2', color: '#ef4444', padding: '4px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {c.nombre}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
+          {/* Cabecera días de la semana */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+            {diasSemana.map(dia => (
+              <div key={dia} style={{ padding: '12px 10px', textAlign: 'center', fontSize: '13px', fontWeight: '500', color: '#6b7280' }}>
+                {dia}
               </div>
-            )
-          })}
+            ))}
+          </div>
+
+          {/* Grilla de días */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+            {grillaDias.map((dia, idx) => {
+              const esHoy = dia === hoy.getDate() && mesVisible === hoy.getMonth() && anioVisible === hoy.getFullYear()
+              
+              // Buscar eventos para este día
+              const tarjetasCredito = cuentas.filter(c => c.tipo === 'credito')
+              const pagosHoy = tarjetasCredito.filter(c => c.dia_pago === dia)
+              const cortesHoy = tarjetasCredito.filter(c => c.dia_corte === dia)
+
+              return (
+                <div key={idx} style={{ minHeight: '100px', padding: '10px', borderRight: (idx + 1) % 7 === 0 ? 'none' : '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6', backgroundColor: dia ? 'white' : '#f9fafb' }}>
+                  {dia && (
+                    <>
+                      <div style={{ marginBottom: '8px' }}>
+                        <span style={{ 
+                          display: 'inline-flex', justifyContent: 'center', alignItems: 'center', width: '28px', height: '28px', borderRadius: '50%', fontSize: '13px', fontWeight: esHoy ? 'bold' : '500', 
+                          backgroundColor: esHoy ? '#6d28d9' : 'transparent', color: esHoy ? 'white' : '#111827' 
+                        }}>
+                          {dia}
+                        </span>
+                      </div>
+                      
+                      {/* Eventos del día */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {pagosHoy.map(c => (
+                          <div key={`p-${c.id}`} style={{ backgroundColor: '#dcfce7', color: '#16a34a', padding: '4px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {c.nombre}
+                          </div>
+                        ))}
+                        {cortesHoy.map(c => (
+                          <div key={`c-${c.id}`} style={{ backgroundColor: '#fee2e2', color: '#ef4444', padding: '4px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {c.nombre}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
 

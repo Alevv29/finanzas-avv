@@ -160,10 +160,29 @@ export default function Movimientos() {
   if (loading) return <div style={{ padding: '40px' }}>Cargando tus datos...</div>
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
+    <div className="container-principal" style={{ padding: '30px', maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
       
+      {/* BLOQUE DE ESTILOS INFALIBLE (Ignora la caché de index.css) */}
+      <style>{`
+        @media (max-width: 768px) {
+          .container-principal { padding: 15px !important; padding-top: 70px !important; }
+          .header-mov { flex-direction: column !important; align-items: flex-start !important; gap: 15px !important; }
+          .filtros-mov { flex-wrap: wrap !important; }
+          .fila-mov { flex-wrap: wrap !important; padding: 15px !important; }
+          .acciones-mov {
+            margin-left: 0 !important;
+            width: 100% !important;
+            justify-content: flex-end !important;
+            border-top: 1px dashed #e5e7eb !important;
+            padding-top: 15px !important;
+            margin-top: 10px !important;
+          }
+        }
+        body.dark-theme .acciones-mov { border-top-color: #2d243e !important; }
+      `}</style>
+
       {/* Encabezado */}
-      <div className="header-movimientos" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+      <div className="header-mov" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
         <div>
           <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0 0 5px 0' }}>Movimientos</h2>
           <p style={{ color: '#6b7280', margin: 0 }}>Historial de ingresos y gastos</p>
@@ -179,7 +198,7 @@ export default function Movimientos() {
       </div>
 
       {/* Resumen Superior */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '30px' }}>
         <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', padding: '20px', borderRadius: '12px' }}>
           <span style={{ color: '#10b981', fontSize: '14px', fontWeight: '500' }}>Ingresos</span>
           <h3 style={{ margin: '5px 0 0 0', fontSize: '24px', fontWeight: 'bold', color: '#047857' }}>{formatearSoles(totalIngresos)}</h3>
@@ -191,7 +210,7 @@ export default function Movimientos() {
       </div>
 
       {/* Barra de Filtros */}
-      <div className="filtros-movimientos" style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
+      <div className="filtros-mov" style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center' }}>
         {['Todos', 'Ingresos', 'Gastos'].map(filtro => (
           <button
             key={filtro}
@@ -218,13 +237,13 @@ export default function Movimientos() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {movimientosFiltrados.map((mov, index) => (
-              <div key={mov.id} className="fila-movimiento" style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', borderBottom: index === movimientosFiltrados.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
+              <div key={mov.id} className="fila-mov" style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', borderBottom: index === movimientosFiltrados.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
                 
                 <div style={{ marginRight: '15px', color: mov.tipo === 'gasto' ? '#f87171' : '#60a5fa' }}>
                   {mov.tipo === 'gasto' ? <ArrowDownCircle size={28} strokeWidth={1.5} /> : <ArrowUpCircle size={28} strokeWidth={1.5} />}
                 </div>
 
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: '150px' }}>
                   <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '600', color: '#1f2937' }}>{mov.descripcion}</h4>
                   <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', gap: '5px', alignItems: 'center', flexWrap: 'wrap' }}>
                     {mov.categoria} • {formatearFecha(mov.fecha)} 
@@ -236,12 +255,12 @@ export default function Movimientos() {
                   </div>
                 </div>
 
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: mov.tipo === 'gasto' ? '#ef4444' : '#10b981' }}>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: mov.tipo === 'gasto' ? '#ef4444' : '#10b981', textAlign: 'right' }}>
                   {mov.tipo === 'gasto' ? '-' : ''}{formatearSoles(mov.monto)}
                 </div>
 
                 {/* Contenedor de Acciones (Botones) */}
-                <div className="acciones-movimiento" style={{ display: 'flex', gap: '15px', marginLeft: '25px' }}>
+                <div className="acciones-mov" style={{ display: 'flex', gap: '15px', marginLeft: '25px' }}>
                   <button onClick={() => handleAbrirModal(mov)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                     <Edit2 size={18} />
                   </button>
@@ -259,7 +278,7 @@ export default function Movimientos() {
       {/* MODAL "NUEVO / EDITAR MOVIMIENTO" */}
       {modalAbierto && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', width: '100%', maxWidth: '400px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', width: '100%', maxWidth: '400px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
             
             <div style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#111827' }}>
@@ -270,7 +289,7 @@ export default function Movimientos() {
               </button>
             </div>
 
-            <form onSubmit={handleGuardar} style={{ padding: '0 20px 20px 20px' }}>
+            <form onSubmit={handleGuardar} style={{ padding: '0 20px 20px 20px', overflowY: 'auto' }}>
               
               <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
                 <button
